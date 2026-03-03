@@ -3,153 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gelişmiş PDF Atölyesi v4</title>
+    <title>PDF Master Pro v5 - Görsel Editör</title>
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        .page-card { position: relative; border: 2px solid transparent; transition: all 0.2s; }
+        .page-card:hover { border-color: #3b82f6; transform: scale(1.05); }
+        .delete-btn { position: absolute; top: -10px; right: -10px; background: #ef4444; color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; items-center: center; justify-content: center; cursor: pointer; border: 2px solid white; font-weight: bold; }
         .drop-zone { border: 2px dashed #cbd5e1; transition: all 0.3s; }
         .drop-zone.drag-over { border-color: #3b82f6; background-color: #eff6ff; }
-        .card { transition: all 0.3s ease; }
-        .card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans text-slate-900">
+<body class="bg-slate-50 min-h-screen pb-20 font-sans">
 
-    <div class="max-w-6xl mx-auto py-12 px-6">
-        <header class="text-center mb-16">
-            <h1 class="text-5xl font-black tracking-tight text-blue-600 mb-4">PDF Master Pro v4</h1>
-            <p class="text-slate-500 text-lg">Sürükle-bırak desteği ve yeni düzenleme araçları eklendi.</p>
+    <div class="max-w-6xl mx-auto py-10 px-6">
+        <header class="text-center mb-12">
+            <h1 class="text-5xl font-black text-blue-600 mb-2 italic">PDF MASTER V5</h1>
+            <p class="text-slate-500 font-medium">Görsel Düzenleme ve Sayfa Yönetimi Paneli</p>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border-2 border-blue-100 mb-10">
+            <h2 class="text-2xl font-bold mb-6 flex items-center text-blue-700">🖼️ Görsel Editör (Sayfa Yönetimi)</h2>
             
-            <div class="card bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-                <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-6 text-3xl">🖼️</div>
-                <h2 class="text-2xl font-bold mb-3">Görselden PDF</h2>
-                <div id="jpgDrop" class="drop-zone p-6 rounded-2xl text-center mb-4 cursor-pointer">
-                    <p class="text-xs text-slate-400">Görselleri buraya sürükleyin veya tıklayın</p>
-                    <input type="file" id="jpgInput" multiple accept="image/*" class="hidden">
-                </div>
-                <input type="text" id="jpgName" placeholder="Dosya adı" class="w-full p-2 border rounded-xl mb-4 text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                <button onclick="jpgToPdf()" id="jpgBtn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow-lg">PDF Oluştur</button>
+            <div id="editorDrop" class="drop-zone p-10 rounded-3xl text-center mb-6 cursor-pointer">
+                <p class="text-slate-500">Düzenlemek istediğiniz PDF'i buraya sürükleyin veya tıklayın</p>
+                <input type="file" id="editorInput" accept=".pdf" class="hidden">
             </div>
 
-            <div class="card bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-                <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 text-3xl">➕</div>
-                <h2 class="text-2xl font-bold mb-3">PDF Birleştir</h2>
-                <div id="mergeDrop" class="drop-zone p-6 rounded-2xl text-center mb-4 cursor-pointer">
-                    <p class="text-xs text-slate-400">PDF'leri buraya sürükleyin</p>
-                    <input type="file" id="mergeInput" multiple accept=".pdf" class="hidden">
-                </div>
-                <input type="text" id="mergeName" placeholder="Dosya adı" class="w-full p-2 border rounded-xl mb-4 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
-                <button onclick="mergePdfs()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">Birleştir</button>
+            <div id="pageContainer" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-8 min-h-[100px] p-4 bg-slate-50 rounded-2xl">
+                <p class="text-slate-400 text-sm col-span-full text-center py-10 italic">Henüz dosya seçilmedi...</p>
             </div>
 
-            <div class="card bg-white p-8 rounded-3xl shadow-sm border border-blue-200">
-                <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mb-6 text-3xl">✍️</div>
-                <h2 class="text-2xl font-bold mb-3">PDF Düzenle</h2>
-                <p class="text-xs text-slate-400 mb-4">Sayfaya metin eklemek için dosya seçin.</p>
-                <input type="file" id="editInput" accept=".pdf" class="block w-full text-xs text-slate-500 mb-4">
-                <input type="text" id="editText" placeholder="Eklenecek Metin" class="w-full p-2 border rounded-xl mb-2 text-sm outline-none">
-                <button onclick="editPdf()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg">Metin Ekle ve İndir</button>
+            <div class="flex flex-wrap gap-4">
+                <input type="text" id="finalName" placeholder="Yeni dosya adı" class="flex-1 p-3 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 shadow-inner">
+                <button onclick="saveEditedPdf()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-blue-700 shadow-lg">Değişiklikleri Kaydet ve İndir</button>
             </div>
-
         </div>
-        
-        <footer class="mt-20 text-center text-slate-400 text-sm border-t pt-8">
-            <p>© 2026 PDF Atölyesi - altitoke-eng</p>
-        </footer>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-white p-8 rounded-[2rem] shadow-sm border">
+                <h3 class="font-bold text-xl mb-4">🖼️ Görselden PDF</h3>
+                <input type="file" id="jpgInput" multiple accept="image/*" class="block w-full text-sm text-slate-500 mb-4">
+                <button onclick="jpgToPdf()" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold hover:bg-black">PDF Yap</button>
+            </div>
+            <div class="bg-white p-8 rounded-[2rem] shadow-sm border">
+                <h3 class="font-bold text-xl mb-4">➕ PDF Birleştir</h3>
+                <input type="file" id="mergeInput" multiple accept=".pdf" class="block w-full text-sm text-slate-500 mb-4">
+                <button onclick="mergePdfs()" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700">Birleştir</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        const { PDFDocument, rgb, StandardFonts } = PDFLib;
+        const { PDFDocument } = PDFLib;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // --- SÜRÜKLE BIRAK MANTIĞI ---
-        function setupDropZone(dropZoneId, inputId) {
-            const dropZone = document.getElementById(dropZoneId);
-            const input = document.getElementById(inputId);
+        let currentPdfDoc = null;
+        let pageIndices = []; // Tutulan sayfa indisleri
 
-            dropZone.onclick = () => input.click();
-            dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); };
-            dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
-            dropZone.ondrop = (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('drag-over');
-                input.files = e.dataTransfer.files;
-                alert(`${input.files.length} dosya yüklendi.`);
-            };
+        // --- EDİTÖR SÜRÜKLE BIRAK ---
+        const editorDrop = document.getElementById('editorDrop');
+        const editorInput = document.getElementById('editorInput');
+        editorDrop.onclick = () => editorInput.click();
+        
+        editorInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (file) loadPdfForEditing(file);
+        };
+
+        // --- PDF'İ GÖRSEL OLARAK YÜKLE ---
+        async function loadPdfForEditing(file) {
+            const container = document.getElementById('pageContainer');
+            container.innerHTML = '<p class="col-span-full text-center py-10">Sayfalar oluşturuluyor...</p>';
+            
+            const arrayBuffer = await file.arrayBuffer();
+            currentPdfDoc = await PDFDocument.load(arrayBuffer);
+            const pdfJsDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            
+            container.innerHTML = '';
+            pageIndices = [];
+
+            for (let i = 1; i <= pdfJsDoc.numPages; i++) {
+                pageIndices.push(i - 1);
+                const page = await pdfJsDoc.getPage(i);
+                const viewport = page.getViewport({scale: 0.3});
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({canvasContext: context, viewport: viewport}).promise;
+
+                const card = document.createElement('div');
+                card.className = 'page-card bg-white p-2 shadow rounded-lg';
+                card.setAttribute('data-index', i - 1);
+                card.innerHTML = `
+                    <div class="delete-btn" onclick="removePageCard(${i - 1})">×</div>
+                    <img src="${canvas.toDataURL()}" class="w-full h-auto rounded">
+                    <p class="text-[10px] text-center mt-1 font-bold text-slate-400">Sayfa ${i}</p>
+                `;
+                container.appendChild(card);
+            }
         }
-        setupDropZone('jpgDrop', 'jpgInput');
-        setupDropZone('mergeDrop', 'mergeInput');
 
-        // --- PDF DÜZENLEME (METİN EKLEME) ---
-        async function editPdf() {
-            const file = document.getElementById('editInput').files[0];
-            const textToAdd = document.getElementById('editText').value;
-            if (!file || !textToAdd) return alert('Lütfen PDF seçin ve metin yazın!');
+        function removePageCard(index) {
+            const card = document.querySelector(`[data-index="${index}"]`);
+            card.remove();
+            pageIndices = pageIndices.filter(i => i !== index);
+        }
 
-            const pdfDoc = await PDFDocument.load(await file.arrayBuffer());
-            const pages = pdfDoc.getPages();
-            const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        async function saveEditedPdf() {
+            if (!currentPdfDoc || pageIndices.length === 0) return alert("Düzenlenecek sayfa kalmadı!");
+            
+            const newPdf = await PDFDocument.create();
+            const copiedPages = await newPdf.copyPages(currentPdfDoc, pageIndices);
+            copiedPages.forEach(p => newPdf.addPage(p));
 
-            // Tüm sayfalara sağ üst köşeye metni ekler
-            pages.forEach(page => {
-                page.drawText(textToAdd, {
-                    x: 50,
-                    y: page.getHeight() - 50,
-                    size: 20,
-                    font: font,
-                    color: rgb(0.2, 0.4, 1)
-                });
-            });
-
-            download(await pdfDoc.save(), "duzenlenmiş_pdf", "editInput");
+            const bytes = await newPdf.save();
+            const name = document.getElementById('finalName').value || "duzenlenmis_pdf";
+            download(bytes, name);
         }
 
         // --- YARDIMCI: İNDİRME ---
-        function download(bytes, fileName, inputId) {
-            let customName = document.getElementById(inputId + "Name")?.value || fileName;
-            if (!customName.endsWith(".pdf")) customName += ".pdf";
+        function download(bytes, name) {
             const blob = new Blob([bytes], { type: "application/pdf" });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = customName;
+            link.download = name.endsWith(".pdf") ? name : name + ".pdf";
             link.click();
         }
 
-        // --- DİĞER FONKSİYONLAR (JPG ve MERGE) ÖNCEKİ SÜRÜMLE AYNI ŞEKİLDE DEVAM EDER ---
+        // --- JPG TO PDF (v4 İLE AYNI) ---
         async function jpgToPdf() {
             const files = document.getElementById('jpgInput').files;
-            if (files.length === 0) return alert('Görsel seçin!');
+            if (files.length === 0) return;
             const pdfDoc = await PDFDocument.create();
             for (const file of files) {
-                const imgData = await new Promise(r => { const reader = new FileReader(); reader.onload = (e) => r(e.target.result); reader.readAsDataURL(file); });
-                const img = new Image(); await new Promise(r => { img.onload = r; img.src = imgData; });
-                const canvas = document.createElement('canvas');
-                let w = img.width, h = img.height;
-                const max = 1600;
-                if (w > max || h > max) { if (w > h) { h *= max / w; w = max; } else { w *= max / h; h = max; } }
-                canvas.width = w; canvas.height = h;
-                const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
-                const bytes = await fetch(canvas.toDataURL('image/jpeg', 0.7)).then(r => r.arrayBuffer());
-                const embedded = await pdfDoc.embedJpg(bytes);
-                const page = pdfDoc.addPage([embedded.width, embedded.height]);
-                page.drawImage(embedded, { x: 0, y: 0, width: embedded.width, height: embedded.height });
+                const img = await pdfDoc.embedJpg(await file.arrayBuffer());
+                const page = pdfDoc.addPage([img.width, img.height]);
+                page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
             }
-            download(await pdfDoc.save(), "resimden_pdf", "jpg");
+            download(await pdfDoc.save(), "resimden_pdf");
         }
 
+        // --- MERGE (v4 İLE AYNI) ---
         async function mergePdfs() {
             const files = document.getElementById('mergeInput').files;
-            if (files.length < 2) return alert('En az 2 dosya!');
-            const mergedPdf = await PDFDocument.create();
+            if (files.length < 2) return;
+            const pdf = await PDFDocument.create();
             for (const file of files) {
-                const pdf = await PDFDocument.load(await file.arrayBuffer());
-                const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                pages.forEach(p => mergedPdf.addPage(p));
+                const doc = await PDFDocument.load(await file.arrayBuffer());
+                (await pdf.copyPages(doc, doc.getPageIndices())).forEach(p => pdf.addPage(p));
             }
-            download(await mergedPdf.save(), "birlesik_pdf", "merge");
+            download(await pdf.save(), "birlesik_pdf");
         }
     </script>
 </body>
