@@ -83,51 +83,67 @@
             link.click();
         }
 
-        // --- 1. GÖRSELDEN PDF (YÖN DÜZELTME GARANTİLİ) ---
-        async function jpgToPdf() {
-            const files = document.getElementById('jpgInput').files;
-            if (files.length === 0) return alert('Lütfen görsel seçin!');
-            
-            const btn = document.getElementById('jpgBtn');
-            btn.innerText = "İşleniyor...";
-            btn.disabled = true;
+       // --- 1. GÖRSELDEN PDF (SIKIŞTIRMA VE YÖN DÜZELTME DESTEKLİ) ---
+async function jpgToPdf() {
+    const files = document.getElementById('jpgInput').files;
+    if (files.length === 0) return alert('Lütfen görsel seçin!');
+    
+    const btn = document.getElementById('jpgBtn');
+    btn.innerText = "Sıkıştırılıyor ve Hazırlanıyor...";
+    btn.disabled = true;
 
-            const pdfDoc = await PDFDocument.create();
+    const pdfDoc = await PDFDocument.create();
 
-            for (const file of files) {
-                const imgData = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => resolve(e.target.result);
-                    reader.readAsDataURL(file);
-                });
+    for (const file of files) {
+        const imgData = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(file);
+        });
 
-                // Canvas kullanarak resmi düzgün yönde oluşturma
-                const img = new Image();
-                await new Promise((resolve) => {
-                    img.onload = resolve;
-                    img.src = imgData;
-                });
+        const img = new Image();
+        await new Promise((resolve) => {
+            img.onload = resolve;
+            img.src = imgData;
+        });
 
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
+        const canvas = document.createElement('canvas');
+        
+        // --- BOYUT VE SIKIŞTIRMA AYARI ---
+        let width = img.width;
+        let height = img.height;
+        const maxDimension = 1600; // Maksimum genişlik/yükseklik (Boyutu düşürmek için)
 
-                // Düzeltilmiş resmi JPEG olarak al
-                const fixedImageData = canvas.toDataURL('image/jpeg', 0.95);
-                const fixedImgBytes = await fetch(fixedImageData).then(res => res.arrayBuffer());
-                
-                const embeddedImg = await pdfDoc.embedJpg(fixedImgBytes);
-                const page = pdfDoc.addPage([embeddedImg.width, embeddedImg.height]);
-                page.drawImage(embeddedImg, { x: 0, y: 0, width: embeddedImg.width, height: embeddedImg.height });
+        if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+                height *= maxDimension / width;
+                width = maxDimension;
+            } else {
+                width *= maxDimension / height;
+                height = maxDimension;
             }
-
-            download(await pdfDoc.save(), "resimden_pdf.pdf");
-            btn.innerText = "PDF Oluştur";
-            btn.disabled = false;
         }
 
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        
+        // Görseli canvas üzerine yeni boyutlarıyla çiz (Sıkıştırma burada başlar)
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Kaliteyi %70'e düşür (Gözle görülür fark olmaz ama boyut çok küçülür)
+        const compressedImageData = canvas.toDataURL('image/jpeg', 0.7); 
+        const fixedImgBytes = await fetch(compressedImageData).then(res => res.arrayBuffer());
+        
+        const embeddedImg = await pdfDoc.embedJpg(fixedImgBytes);
+        const page = pdfDoc.addPage([embeddedImg.width, embeddedImg.height]);
+        page.drawImage(embeddedImg, { x: 0, y: 0, width: embeddedImg.width, height: embeddedImg.height });
+    }
+
+    download(await pdfDoc.save(), "sikistirilmis_resimden_pdf.pdf");
+    btn.innerText = "PDF Oluştur";
+    btn.disabled = false;
+}
         // --- 2. BİRLEŞTİRME ---
         async function mergePdfs() {
             const files = document.getElementById('mergeInput').files;
@@ -183,3 +199,4 @@
 </body>
 
 </html>
+
