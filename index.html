@@ -3,160 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Master Pro v5 - Görsel Editör</title>
+    <title>PDF Master Pro v5.2 - Görsel Editör ve Dönüştürücü</title>
+    <!-- Gerekli Kütüphaneler -->
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
+
     <style>
-        .page-card { position: relative; border: 2px solid transparent; transition: all 0.2s; }
-        .page-card:hover { border-color: #3b82f6; transform: scale(1.05); }
-        .delete-btn { position: absolute; top: -10px; right: -10px; background: #ef4444; color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; items-center: center; justify-content: center; cursor: pointer; border: 2px solid white; font-weight: bold; }
-        .drop-zone { border: 2px dashed #cbd5e1; transition: all 0.3s; }
-        .drop-zone.drag-over { border-color: #3b82f6; background-color: #eff6ff; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Sürükle Bırak Alanı Efektleri */
+        .drop-zone { border: 2px dashed #cbd5e1; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .drop-zone.drag-over { border-color: #3b82f6; background-color: #eff6ff; transform: scale(1.01); }
+
+        /* Sayfa Kartı Tasarımı */
+        .page-card { cursor: grab; position: relative; transition: all 0.2s ease; border: 2px solid transparent; }
+        .page-card:active { cursor: grabbing; }
+        .page-card:hover { border-color: #3b82f6; transform: translateY(-4px); }
+        .page-card.sortable-ghost { opacity: 0.3; background: #dbeafe; }
+
+        /* Silme Butonu */
+        .delete-btn { 
+            position: absolute; top: -10px; right: -10px; 
+            background: #ef4444; color: white; border-radius: 50%; 
+            width: 26px; height: 26px; display: flex; 
+            align-items: center; justify-content: center; 
+            cursor: pointer; border: 2px solid white; 
+            font-weight: bold; z-index: 20; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        /* Yükleme Spinner */
+        .loader {
+            border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6;
+            border-radius: 50%; width: 30px; height: 30px;
+            animation: spin 1s linear infinite; display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Scrollbar Güzelleştirme */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-20 font-sans">
+<body class="bg-slate-50 min-h-screen pb-20 text-slate-900">
 
-    <div class="max-w-6xl mx-auto py-10 px-6">
-        <header class="text-center mb-12">
-            <h1 class="text-5xl font-black text-blue-600 mb-2 italic">PDF MASTER V5</h1>
-            <p class="text-slate-500 font-medium">Görsel Düzenleme ve Sayfa Yönetimi Paneli</p>
+    <div class="max-w-6xl mx-auto py-12 px-6">
+        <!-- Başlık Bölümü -->
+        <header class="text-center mb-16">
+            <h1 class="text-6xl font-black text-blue-600 mb-3 tracking-tighter italic">PDF MASTER PRO v5.2</h1>
+            <p class="text-slate-500 text-lg font-medium italic">Görsel Editör: Sayfaları sürükle, sırala, sil ve yönet.</p>
         </header>
 
-        <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border-2 border-blue-100 mb-10">
-            <h2 class="text-2xl font-bold mb-6 flex items-center text-blue-700">🖼️ Görsel Editör (Sayfa Yönetimi)</h2>
+        <!-- 1. BÖLÜM: GÖRSELDEN PDF (İLK SIRADA) -->
+        <section class="bg-white p-10 rounded-[3rem] shadow-xl border border-blue-50 mb-12">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-2xl">🖼️</div>
+                <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">Görselden PDF Oluştur</h2>
+            </div>
             
-            <div id="editorDrop" class="drop-zone p-10 rounded-3xl text-center mb-6 cursor-pointer">
-                <p class="text-slate-500">Düzenlemek istediğiniz PDF'i buraya sürükleyin veya tıklayın</p>
+            <div id="jpgDrop" class="drop-zone p-12 rounded-[2rem] text-center mb-6 cursor-pointer group">
+                <p class="text-slate-400 group-hover:text-blue-500 transition font-medium">Resimleri buraya sürükleyin veya tıklayarak seçin</p>
+                <p class="text-[10px] text-slate-300 mt-2 uppercase tracking-widest">JPG, PNG, WEBP Desteklenir • Otomatik Yön Düzeltme</p>
+                <input type="file" id="jpgInput" multiple accept="image/*" class="hidden">
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4">
+                <input type="text" id="jpgName" placeholder="Dosya adı (Örn: tatil_fotograflari)" class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition shadow-inner">
+                <button onclick="jpgToPdf()" id="jpgBtn" class="bg-blue-600 text-white px-12 py-4 rounded-2xl font-black hover:bg-blue-700 transition shadow-lg shadow-blue-200 uppercase tracking-wider">PDF'e Dönüştür</button>
+            </div>
+        </section>
+
+        <!-- 2. BÖLÜM: GÖRSEL PDF EDİTÖRÜ (SÜRÜKLE-SİL-SIRALA) -->
+        <section class="bg-white p-10 rounded-[3.5rem] shadow-2xl border-2 border-blue-100 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
+                <span class="text-9xl font-black">EDIT</span>
+            </div>
+
+            <div class="flex justify-between items-center mb-8">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-2xl text-indigo-600">✍️</div>
+                    <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">Görsel PDF Editörü</h2>
+                </div>
+                <span class="px-4 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold uppercase tracking-tighter italic">İleri Düzey Kontrol</span>
+            </div>
+            
+            <div id="editorDrop" class="drop-zone p-10 rounded-3xl text-center mb-8 cursor-pointer bg-slate-50/50">
+                <p class="text-slate-500 font-semibold italic">Düzenlemek istediğiniz PDF'i buraya bırakın</p>
+                <p class="text-[10px] text-slate-400 mt-1 uppercase">Sayfa yerlerini değiştirmek için sürükleyin, silmek için çarpıya basın</p>
                 <input type="file" id="editorInput" accept=".pdf" class="hidden">
             </div>
 
-            <div id="pageContainer" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-8 min-h-[100px] p-4 bg-slate-50 rounded-2xl">
-                <p class="text-slate-400 text-sm col-span-full text-center py-10 italic">Henüz dosya seçilmedi...</p>
+            <!-- Sayfa Önizleme Alanı -->
+            <div id="pageContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-10 min-h-[250px] p-8 bg-slate-100/50 rounded-[2.5rem] border border-slate-200 shadow-inner">
+                <div class="col-span-full flex flex-col items-center justify-center text-slate-400 py-20 opacity-50">
+                    <span class="text-5xl mb-4">📄</span>
+                    <p class="italic">Henüz bir PDF dosyası yüklenmedi.</p>
+                </div>
             </div>
 
-            <div class="flex flex-wrap gap-4">
-                <input type="text" id="finalName" placeholder="Yeni dosya adı" class="flex-1 p-3 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 shadow-inner">
-                <button onclick="saveEditedPdf()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-blue-700 shadow-lg">Değişiklikleri Kaydet ve İndir</button>
+            <div class="flex flex-col md:flex-row gap-6 pt-8 border-t border-slate-100">
+                <div class="flex-1">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-2">Yeni Dosya Adı</label>
+                    <input type="text" id="finalName" placeholder="Kaydedilecek isim" class="w-full p-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition">
+                </div>
+                <div class="flex items-end">
+                    <button onclick="saveEditedPdf()" class="w-full md:w-auto bg-indigo-600 text-white px-12 py-4 rounded-2xl font-black hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 uppercase tracking-widest flex items-center justify-center gap-2">
+                        <span>💾 Değişiklikleri Uygula</span>
+                    </button>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="bg-white p-8 rounded-[2rem] shadow-sm border">
-                <h3 class="font-bold text-xl mb-4">🖼️ Görselden PDF</h3>
-                <input type="file" id="jpgInput" multiple accept="image/*" class="block w-full text-sm text-slate-500 mb-4">
-                <button onclick="jpgToPdf()" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold hover:bg-black">PDF Yap</button>
+        <!-- Diğer Araçlar -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+            <div class="bg-white p-8 rounded-[2.5rem] shadow-lg border">
+                <h3 class="font-bold text-xl mb-4 flex items-center gap-2">➕ PDF Birleştir</h3>
+                <input type="file" id="mergeInput" multiple accept=".pdf" class="block w-full text-xs text-slate-400 mb-4 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-emerald-50 file:text-emerald-700">
+                <button onclick="mergePdfs()" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-50">Dosyaları Birleştir</button>
             </div>
-            <div class="bg-white p-8 rounded-[2rem] shadow-sm border">
-                <h3 class="font-bold text-xl mb-4">➕ PDF Birleştir</h3>
-                <input type="file" id="mergeInput" multiple accept=".pdf" class="block w-full text-sm text-slate-500 mb-4">
-                <button onclick="mergePdfs()" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700">Birleştir</button>
+            <div class="bg-white p-8 rounded-[2.5rem] shadow-lg border">
+                <h3 class="font-bold text-xl mb-4 flex items-center gap-2">📝 Word'den PDF'e</h3>
+                <input type="file" id="wordInput" accept=".docx" class="block w-full text-xs text-slate-400 mb-4 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-orange-50 file:text-orange-700">
+                <button onclick="wordToPdf()" class="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 shadow-lg shadow-orange-50">Dönüştür ve Yazdır</button>
             </div>
         </div>
+        
+        <footer class="mt-20 text-center text-slate-400 text-sm font-bold tracking-tighter uppercase italic opacity-60">
+            © 2026 altitoke-eng • Profesyonel PDF İşleme Çözümleri
+        </footer>
     </div>
 
     <script>
-        const { PDFDocument } = PDFLib;
+        // Kütüphane Ayarları
+        const { PDFDocument, rgb } = PDFLib;
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         let currentPdfDoc = null;
-        let pageIndices = []; // Tutulan sayfa indisleri
+        let sortable = null;
 
-        // --- EDİTÖR SÜRÜKLE BIRAK ---
-        const editorDrop = document.getElementById('editorDrop');
-        const editorInput = document.getElementById('editorInput');
-        editorDrop.onclick = () => editorInput.click();
-        
-        editorInput.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (file) loadPdfForEditing(file);
-        };
+        // --- GENEL SÜRÜKLE BIRAK FONKSİYONU ---
+        function setupDrop(dropId, inputId, callback) {
+            const drop = document.getElementById(dropId);
+            const input = document.getElementById(inputId);
+            
+            drop.onclick = () => input.click();
+            drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('drag-over'); };
+            drop.ondragleave = () => drop.classList.remove('drag-over');
+            drop.ondrop = (e) => {
+                e.preventDefault();
+                drop.classList.remove('drag-over');
+                input.files = e.dataTransfer.files;
+                if(callback) callback(input.files);
+            };
+            input.onchange = () => { if(callback) callback(input.files); };
+        }
 
-        // --- PDF'İ GÖRSEL OLARAK YÜKLE ---
+        setupDrop('jpgDrop', 'jpgInput', () => {});
+        setupDrop('editorDrop', 'editorInput', (f) => loadPdfForEditing(f[0]));
+
+        // --- GÖRSELDEN PDF (SIKIŞTIRMA + YÖN DÜZELTME) ---
+        async function jpgToPdf() {
+            const files = document.getElementById('jpgInput').files;
+            if (files.length === 0) return alert('Lütfen resim seçin!');
+            
+            const btn = document.getElementById('jpgBtn');
+            btn.innerText = "İŞLENİYOR...";
+            btn.disabled = true;
+
+            const pdfDoc = await PDFDocument.create();
+
+            for (const file of files) {
+                const img = new Image();
+                img.src = await new Promise(r => { 
+                    const reader = new FileReader(); 
+                    reader.onload = (e) => r(e.target.result); 
+                    reader.readAsDataURL(file); 
+                });
+                await new Promise(r => img.onload = r);
+
+                const canvas = document.createElement('canvas');
+                let w = img.width, h = img.height, max = 1600;
+
+                // Boyut Sıkıştırma
+                if (w > max || h > max) {
+                    if (w > h) { h *= max / w; w = max; }
+                    else { w *= max / h; h = max; }
+                }
+
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+
+                // Kalite Sıkıştırma (0.75)
+                const bytes = await fetch(canvas.toDataURL('image/jpeg', 0.75)).then(r => r.arrayBuffer());
+                const embedded = await pdfDoc.embedJpg(bytes);
+                const page = pdfDoc.addPage([embedded.width, embedded.height]);
+                page.drawImage(embedded, { x: 0, y: 0, width: embedded.width, height: embedded.height });
+            }
+
+            const name = document.getElementById('jpgName').value || "resimlerden_pdf";
+            download(await pdfDoc.save(), name);
+            btn.innerText = "PDF'E DÖNÜŞTÜR";
+            btn.disabled = false;
+        }
+
+        // --- GÖRSEL EDİTÖR: PDF YÜKLEME VE ÖNİZLEME ---
         async function loadPdfForEditing(file) {
+            if (!file) return;
             const container = document.getElementById('pageContainer');
-            container.innerHTML = '<p class="col-span-full text-center py-10">Sayfalar oluşturuluyor...</p>';
+            container.innerHTML = '<div class="col-span-full text-center py-20"><div class="loader mb-4"></div><p class="font-bold text-blue-500 animate-pulse">Sayfalar oluşturuluyor...</p></div>';
             
             const arrayBuffer = await file.arrayBuffer();
             currentPdfDoc = await PDFDocument.load(arrayBuffer);
             const pdfJsDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
             
             container.innerHTML = '';
-            pageIndices = [];
-
             for (let i = 1; i <= pdfJsDoc.numPages; i++) {
-                pageIndices.push(i - 1);
                 const page = await pdfJsDoc.getPage(i);
-                const viewport = page.getViewport({scale: 0.3});
+                const viewport = page.getViewport({scale: 0.4});
                 const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
-
-                await page.render({canvasContext: context, viewport: viewport}).promise;
+                await page.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
 
                 const card = document.createElement('div');
-                card.className = 'page-card bg-white p-2 shadow rounded-lg';
-                card.setAttribute('data-index', i - 1);
+                card.className = 'page-card bg-white p-3 shadow-lg rounded-[1.5rem]';
+                card.setAttribute('data-original-index', i - 1);
                 card.innerHTML = `
-                    <div class="delete-btn" onclick="removePageCard(${i - 1})">×</div>
-                    <img src="${canvas.toDataURL()}" class="w-full h-auto rounded">
-                    <p class="text-[10px] text-center mt-1 font-bold text-slate-400">Sayfa ${i}</p>
+                    <div class="delete-btn" onclick="this.parentElement.remove()">×</div>
+                    <img src="${canvas.toDataURL()}" class="w-full h-auto rounded-xl pointer-events-none shadow-sm">
+                    <div class="mt-3 flex justify-between items-center px-2">
+                        <span class="text-[10px] font-black text-slate-300 uppercase">Sayfa ${i}</span>
+                        <span class="text-[10px] text-blue-400">⇅</span>
+                    </div>
                 `;
                 container.appendChild(card);
             }
+
+            // Sürükle-Bırak Sıralama Başlat
+            if (sortable) sortable.destroy();
+            sortable = new Sortable(container, { 
+                animation: 250, 
+                ghostClass: 'sortable-ghost',
+                onEnd: () => { console.log("Sıralama güncellendi"); }
+            });
         }
 
-        function removePageCard(index) {
-            const card = document.querySelector(`[data-index="${index}"]`);
-            card.remove();
-            pageIndices = pageIndices.filter(i => i !== index);
-        }
-
+        // --- GÖRSEL EDİTÖR: KAYDETME ---
         async function saveEditedPdf() {
-            if (!currentPdfDoc || pageIndices.length === 0) return alert("Düzenlenecek sayfa kalmadı!");
-            
+            if (!currentPdfDoc) return alert("Lütfen önce bir PDF yükleyin!");
+            const container = document.getElementById('pageContainer');
+            const cards = container.querySelectorAll('.page-card');
+            if (cards.length === 0) return alert("PDF'de hiç sayfa kalmadı!");
+
             const newPdf = await PDFDocument.create();
-            const copiedPages = await newPdf.copyPages(currentPdfDoc, pageIndices);
+            // Yeni sırayı DOM üzerinden al
+            const indices = Array.from(cards).map(c => parseInt(c.getAttribute('data-original-index')));
+            
+            const copiedPages = await newPdf.copyPages(currentPdfDoc, indices);
             copiedPages.forEach(p => newPdf.addPage(p));
 
             const bytes = await newPdf.save();
-            const name = document.getElementById('finalName').value || "duzenlenmis_pdf";
+            const name = document.getElementById('finalName').value || "duzenlenmis_belge";
             download(bytes, name);
         }
 
-        // --- YARDIMCI: İNDİRME ---
-        function download(bytes, name) {
-            const blob = new Blob([bytes], { type: "application/pdf" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = name.endsWith(".pdf") ? name : name + ".pdf";
-            link.click();
-        }
-
-        // --- JPG TO PDF (v4 İLE AYNI) ---
-        async function jpgToPdf() {
-            const files = document.getElementById('jpgInput').files;
-            if (files.length === 0) return;
-            const pdfDoc = await PDFDocument.create();
-            for (const file of files) {
-                const img = await pdfDoc.embedJpg(await file.arrayBuffer());
-                const page = pdfDoc.addPage([img.width, img.height]);
-                page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
-            }
-            download(await pdfDoc.save(), "resimden_pdf");
-        }
-
-        // --- MERGE (v4 İLE AYNI) ---
+        // --- DİĞER ARAÇLAR ---
         async function mergePdfs() {
             const files = document.getElementById('mergeInput').files;
-            if (files.length < 2) return;
+            if (files.length < 2) return alert('Lütfen en az 2 PDF seçin!');
             const pdf = await PDFDocument.create();
             for (const file of files) {
                 const doc = await PDFDocument.load(await file.arrayBuffer());
                 (await pdf.copyPages(doc, doc.getPageIndices())).forEach(p => pdf.addPage(p));
             }
-            download(await pdf.save(), "birlesik_pdf");
+            download(await pdf.save(), "birlesmis_dosyalar");
+        }
+
+        async function wordToPdf() {
+            const file = document.getElementById('wordInput').files[0];
+            if (!file) return alert('Word dosyası seçin!');
+            const result = await mammoth.convertToHtml({arrayBuffer: await file.arrayBuffer()});
+            const pWin = window.open('', '', 'height=800,width=1000');
+            pWin.document.write(`<html><head><style>body{padding:60px;font-family:serif;line-height:1.6;}img{max-width:100%}</style></head><body>${result.value}</body></html>`);
+            pWin.document.close();
+            setTimeout(() => pWin.print(), 500);
+        }
+
+        // --- İNDİRME FONKSİYONU ---
+        function download(bytes, name) {
+            const blob = new Blob([bytes], { type: "application/pdf" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = name.toLowerCase().endsWith(".pdf") ? name : name + ".pdf";
+            link.click();
         }
     </script>
 </body>
